@@ -1,17 +1,53 @@
-name: GitHub Actions Demo
-on: [push]
+name: Go-Backend-Poker Workflow
+
+on: [push, pull_request]
+
 jobs:
-  Explore-GitHub-Actions:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - name: Check out repository code
-        uses: actions/checkout@v3
-      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-      - name: List files in the repository
-        run: |
-          ls ${{ github.workspace }}
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "1.18.0"
+
+      - name: Install protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: "3.12.1"
+
+      - name: Set env
+        run: export PATH="$PATH:$HOME/.local/bin"
+
+      - name: check protoc version
+        run: protoc --version
+
+      - name: Installing protoc-gen-go
+        run: go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+
+      - name: Installing protoc-gen-go-grpc
+        run: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+
+      - name: Set env for protoc
+        run: export PATH="$PATH:$(go env GOPATH)/bin"
+
+      - name: Check go env
+        run: go env GOPATH
+
+      - name: Build
+        run: go build -v ./...
+
+      # - name: Gotestsum installer
+      #   run: go install gotest.tools/gotestsum@latest
+
+      - name: Test
+        run: go test -v  -short ./...
